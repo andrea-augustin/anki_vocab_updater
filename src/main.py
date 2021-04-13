@@ -2,7 +2,10 @@ import requests
 
 from ankipandas import Collection
 from tkinter import filedialog
-from nltk.corpus import wordnet
+from nltk.corpus import wordnet, cmudict
+
+
+cmu_to_ipa_dict = dict()
 
 
 def get_words_from_text_file():
@@ -32,8 +35,12 @@ def get_translation_of_a_word(word, language_code):
     return response['responseData']['translatedText']
 
 
+def get_pronunciation_of_a_word(word):
+
+    print(1231)
+
+
 def collect_information_for_words(list_of_words):
-    output = []
 
     """
     create output list
@@ -69,9 +76,21 @@ def anki_stuff():
     print(col.cards.list_decks())
 
 
+def init_cmu_to_ipa_dict():
+    global cmu_to_ipa_dict
+
+    with open('cmu_to_ipa.txt', 'r', encoding='utf-8') as f:
+        file_content = f.read()
+
+    lines = file_content.split('\n')
+    for pronunciation_entry in lines:
+        pron = pronunciation_entry.split('\t')
+        cmu_to_ipa_dict[pron[0]] = pron[1]
+
 
 def main():
-    collect_information_for_words(['dogma'])
+    init_cmu_to_ipa_dict()
+    #get_pronunciation_of_a_word('dogma')
     print(1231)
 
 
