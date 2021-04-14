@@ -2,10 +2,8 @@ import requests
 
 from ankipandas import Collection
 from tkinter import filedialog
-from nltk.corpus import wordnet, cmudict
-
-
-cmu_to_ipa_dict = dict()
+from nltk.corpus import wordnet
+from bs4 import BeautifulSoup
 
 
 def get_words_from_text_file():
@@ -29,15 +27,83 @@ def get_meanings_of_a_word(word):
 
 
 def get_translation_of_a_word(word, language_code):
+    #TODO compare with wiktionary entries and switch to wiktionary if contents are kinda the same
+
     url = "https://api.mymemory.translated.net/get?q=" + word + "&langpair=" + language_code + "|de"
     response = requests.post(url).json()
 
     return response['responseData']['translatedText']
 
 
-def get_pronunciation_of_a_word(word):
+def parse_wiktionary_page(word):
+    req = requests.get("https://en.wiktionary.org/wiki/" + word)
+    soup = BeautifulSoup(req.content, 'html.parser')
 
-    print(1231)
+    stuff = parse_wiktionary_page(soup)
+
+    # @TODO check if page exists (API call)
+    page_content = soup.find("div", class_="mw-parser-output")
+    h2_english_found = False
+    elements_i_need = []
+    # TODO create function: returns elements_i_need
+    for test in page_content.children:
+        if test == '\n':
+            continue
+
+        if test.name == "h2" and h2_english_found:
+            break
+
+        if h2_english_found:
+            if len(elements_i_need) == 0 and test.name != "h3":
+                continue
+
+            elements_i_need.append(test)
+            continue
+
+        specific_thingie = test.find("span", class_="mw-headline", id="English")
+        if specific_thingie:
+            h2_english_found = True
+
+    # TODO create function: returns dict_sorted_information
+    dict_sorted_information = dict()
+    current_set_of_info = []
+    current_info_title = ""
+    for element in elements_i_need:
+        # TODO replace by adding text of first element to current_info_title and remove element from list
+        if len(current_set_of_info) == 0 and current_info_title == "":
+            current_info_title = element.text.replace('[edit]', '')
+            continue
+
+        if element.name == 'h3':
+            dict_sorted_information[current_info_title] = current_set_of_info
+            current_set_of_info = []
+            current_info_title = element.text.replace('[edit]', '')
+            continue
+
+        current_set_of_info.append(element)
+
+        if element == elements_i_need[-1]:
+            dict_sorted_information[current_info_title] = current_set_of_info
+
+    # TODO create function: elements to remove inside a list and iterate over list, returns cleaned dict_sorted_information
+    if 'See also' in dict_sorted_information:
+        del dict_sorted_information['See also']
+
+    if 'Anagrams' in dict_sorted_information:
+        del dict_sorted_information['Anagrams']
+
+    if 'Related terms' in dict_sorted_information:
+        del dict_sorted_information['Related terms']
+
+    if 'Etymology' in dict_sorted_information:
+        del dict_sorted_information['Etymology']
+
+    return dict_sorted_information
+
+
+def get_pronunciation_of_a_word(raw_data_from_wiktionary):
+    # get pronuncation from wiktionary
+    pass
 
 
 def collect_information_for_words(list_of_words):
@@ -76,21 +142,8 @@ def anki_stuff():
     print(col.cards.list_decks())
 
 
-def init_cmu_to_ipa_dict():
-    global cmu_to_ipa_dict
-
-    with open('cmu_to_ipa.txt', 'r', encoding='utf-8') as f:
-        file_content = f.read()
-
-    lines = file_content.split('\n')
-    for pronunciation_entry in lines:
-        pron = pronunciation_entry.split('\t')
-        cmu_to_ipa_dict[pron[0]] = pron[1]
-
-
 def main():
-    init_cmu_to_ipa_dict()
-    #get_pronunciation_of_a_word('dogma')
+    parse_wiktionary_page('dogma')
     print(1231)
 
 
